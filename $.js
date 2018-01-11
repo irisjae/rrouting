@@ -103,92 +103,93 @@
 		return Object .getPrototypeOf (state)
 	};
 		
-	window .uis .$ = function () {
-		var loaded_pages = stream ({});
-		var naver = {};
-		
-		naver .intent = stream ();
-		naver .state = [naver .intent]
-			.map (transition (function (intent, license) {
-				var nav_intent = intent [1];
-				var last_state = intent [2];
-				
-				return function (tenure) {
-					var time = new Date ();
-					
-					var cached = loaded_pages () [nav_intent .hash];
-					var curr = cached ?
-							intent_to_state (nav_intent, cached)
-						:
-							intent_to_state (nav_intent, make_page (naver, nav_intent));
-					
-					if (nav_of (curr)) {
-						nav_of (curr) .intent (['prepare', curr .transition] .concat (curr .args || []));
-					}
-					if (! license ()) {
-						if (last_state !== curr) {
-							var _time = new Date ();
-							
-							sync_hash (curr);
-							replace_dom (curr, last_state);
-							
-							log ('render page time ' + (new Date () - _time) + 'ms', curr);	
-						}
-						var last_loaded = curr;
-					}
-					else {
-						var last_loaded = last_state;
-					}
-					
-					if (last_state) {
-						nav_of (last_state) .intent (['reset']);
-					}
-		
-					log ('process page time ' + (new Date () - time) + 'ms', curr);	
-		
-					tenure (last_loaded);
-					tenure .end (true);
-					if (license ())
-						naver .intent (license ());
-				}
-			}))
-		[0];
-		
-		
-		var manual_nav = stream ();
-		[manual_nav]
-			.map (map (R .applySpec ({
-				page: window .page_name,
-				params: window .page_params,
-				hash: window .page_hash
-			})))
-			.map (filter (R .pipe (R .prop ('page'), window .page_exists)))
-			.forEach (tap (function (nav_intent) {
-				naver .intent ([nav_intent, naver .state ()]);
-			}));
-		window .addEventListener ('hashchange', function () {
-			manual_nav (window .location .hash)
-		});
-		
-		if (window .page_exists (window .page_name (window .location .hash))) {
-			manual_nav (window .location .hash)
-		}
-		else {
-			window .location .hash = window .routes .default;
-		}
-		
-		[naver .state]
-			.map (filter (R .identity))
-			.map (dropRepeats)
-			.forEach (tap (function (page) {
-				if (! loaded_pages () [page .hash] && ! page .temp)
-					loaded_pages (
-						R .assoc (page .hash, /* you sure this is intent? */intent_from_state (page)) (loaded_pages ()))
-			}));
+	window .uis = R .assoc (
+		'$', function () {
+			var loaded_pages = stream ({});
+			var naver = {};
 			
-		return {
-			curr: naver,
-			loaded_pages: loaded_pages
-		};		
-	};
+			naver .intent = stream ();
+			naver .state = [naver .intent]
+				.map (transition (function (intent, license) {
+					var nav_intent = intent [1];
+					var last_state = intent [2];
+					
+					return function (tenure) {
+						var time = new Date ();
+						
+						var cached = loaded_pages () [nav_intent .hash];
+						var curr = cached ?
+								intent_to_state (nav_intent, cached)
+							:
+								intent_to_state (nav_intent, make_page (naver, nav_intent));
+						
+						if (nav_of (curr)) {
+							nav_of (curr) .intent (['prepare', curr .transition] .concat (curr .args || []));
+						}
+						if (! license ()) {
+							if (last_state !== curr) {
+								var _time = new Date ();
+								
+								sync_hash (curr);
+								replace_dom (curr, last_state);
+								
+								log ('render page time ' + (new Date () - _time) + 'ms', curr);	
+							}
+							var last_loaded = curr;
+						}
+						else {
+							var last_loaded = last_state;
+						}
+						
+						if (last_state) {
+							nav_of (last_state) .intent (['reset']);
+						}
+			
+						log ('process page time ' + (new Date () - time) + 'ms', curr);	
+			
+						tenure (last_loaded);
+						tenure .end (true);
+						if (license ())
+							naver .intent (license ());
+					}
+				}))
+			[0];
+			
+			
+			var manual_nav = stream ();
+			[manual_nav]
+				.map (map (R .applySpec ({
+					page: window .page_name,
+					params: window .page_params,
+					hash: window .page_hash
+				})))
+				.map (filter (R .pipe (R .prop ('page'), window .page_exists)))
+				.forEach (tap (function (nav_intent) {
+					naver .intent ([nav_intent, naver .state ()]);
+				}));
+			window .addEventListener ('hashchange', function () {
+				manual_nav (window .location .hash)
+			});
+			
+			if (window .page_exists (window .page_name (window .location .hash))) {
+				manual_nav (window .location .hash)
+			}
+			else {
+				window .location .hash = window .routes .default;
+			}
+			
+			[naver .state]
+				.map (filter (R .identity))
+				.map (dropRepeats)
+				.forEach (tap (function (page) {
+					if (! loaded_pages () [page .hash] && ! page .temp)
+						loaded_pages (
+							R .assoc (page .hash, /* you sure this is intent? */intent_from_state (page)) (loaded_pages ()))
+				}));
+				
+			return {
+				curr: naver,
+				loaded_pages: loaded_pages
+			};		
+		}) (window .uis);
 } ();
