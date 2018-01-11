@@ -12,7 +12,7 @@
 												:
 													undefined;
 							
-							return path .slice (begin_position, end_position) .split ('/') .join ('-') || routes .default;
+							return path .slice (begin_position, end_position) .split ('/') .join ('-') || window .routes .default;
 						};
 	window .page_params =	function (path) {
 								return path .indexOf ('/#') !== -1 ?
@@ -57,7 +57,7 @@
 			.forEach (tap (function (transition_info) {
 				var transition = R .head (transition_info);
 				var nav_intent =	R .merge (
-										[routing (_name, transition)]
+										[window .routing (_name, transition)]
 											.map (R .applySpec ({
 												page: window .page_name,
 												params: window .page_params,
@@ -181,7 +181,7 @@
 			manual_nav (window .location .hash)
 		}
 		else {
-			window .location .hash = routes .default;
+			window .location .hash = window .routes .default;
 		}
 		
 		[extension .state]
