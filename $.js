@@ -24,7 +24,26 @@
 								var params = window .page_params (path);
 								return '#' + window .page_name (path) .split ('-') .join ('/') + (params .length ? '/#' + params .join ('/') : '');
 							};
-		
+	window .routing = R .pipe (
+		function (name_wherefrom, role) {
+			if (! window .routing .table) {
+				window .routing .table = [window .routes]
+				    .map (R .map (window .page_name))
+				    .map (R .invert)
+				    .map (R .map (
+						R .map (R .prop (R .__, window ._routing))
+				    ))
+				    .map (R .map (R .mergeAll))
+				[0]
+			}
+		    return window .routing .table [name_wherefrom] [role];
+		}, 
+		R .tap (function (x) {
+		    if (! x || ! window .page_exists (window .page_name (x)))
+		        throw new Error ('route not found')
+		})
+	);
+
 	var nav_of = R .cond ([
 		[R .identity, R .prop ('nav')]]);
 	var dom_of = function (x) {
