@@ -84,7 +84,7 @@
 										transition: transition,
 										args: R .tail (transition_info)
 									});
-				naver .intent (['nav', nav_intent, naver .state ()]);
+				naver .intent ([nav_intent, naver .state ()]);
 			}));
 		return x;
 	};
@@ -130,8 +130,8 @@
 			naver .intent = stream ();
 			naver .state = [naver .intent]
 				.map (transition (function (intent, license) {
-					var nav_intent = intent [1];
-					var last_state = intent [2];
+					var nav_intent = intent [0];
+					var last_state = intent [1];
 					
 					return function (tenure) {
 						var time = new Date ();
