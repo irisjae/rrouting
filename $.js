@@ -25,9 +25,6 @@
 								return '#' + window .page_name (path) .split ('-') .join ('/') + (params .length ? '/#' + params .join ('/') : '');
 							};
 		
-	var ui_ = function (page_name) {
-		return window .uis [page_name];
-	};
 	var nav_of = R .cond ([
 		[R .identity, R .prop ('nav')]]);
 	var dom_of = function (x) {
@@ -52,7 +49,7 @@
 		}
 	};
 	var make_nav = function (naver, _name) {
-		var x = interaction (noop);
+		var x = { intent: stream (), state: stream () };
 		[x .state]
 			.forEach (tap (function (transition_info) {
 				var transition = R .head (transition_info);
@@ -73,18 +70,15 @@
 		return x;
 	};
 	var make_page = function (naver, nav_intent) {
-		if (ui_ (nav_intent .page)) {
+		if (window .uis [nav_intent .page]) {
 			var nav = make_nav (naver, nav_intent .page);
 			return	R .merge (
-						ui_ (
-							nav_intent .page
-						) ({}, { nav: nav }),
-						{
-							nav: nav
-						}
-					)
+						window .uis [nav_intent .page] ({ nav: nav })
+					) ({
+						nav: nav
+					})
 		}
-		else {
+		else if (R .contains (nav_intent .page) (window ._riot_pages)) {
 			var nav = make_nav (naver, nav_intent .page);
 			var _tag_name = tag_name (nav_intent .page);
 			var x =	riot .mount (
@@ -109,11 +103,13 @@
 		return Object .getPrototypeOf (state)
 	};
 		
-	window .master_ui = function (components, unions) {
+	window .uis .$ = function () {
 		var loaded_pages = stream ({});
+		var naver = {};
 		
-		var extension = interaction (transition (function (intent, license) {
-			if (intent [0] === 'nav') {
+		naver .intent = stream ();
+		naver .state = [naver .intent]
+			.map (transition (function (intent, license) {
 				var nav_intent = intent [1];
 				var last_state = intent [2];
 				
@@ -124,7 +120,7 @@
 					var curr = cached ?
 							intent_to_state (nav_intent, cached)
 						:
-							intent_to_state (nav_intent, make_page (extension, nav_intent));
+							intent_to_state (nav_intent, make_page (naver, nav_intent));
 					
 					if (nav_of (curr)) {
 						nav_of (curr) .intent (['prepare', curr .transition] .concat (curr .args || []));
@@ -153,13 +149,10 @@
 					tenure (last_loaded);
 					tenure .end (true);
 					if (license ())
-						extension .intent (license ());
+						naver .intent (license ());
 				}
-			}
-			else {
-				return decline_ (intent);
-			}
-		}));
+			}))
+		[0];
 		
 		
 		var manual_nav = stream ();
@@ -171,7 +164,7 @@
 			})))
 			.map (filter (R .pipe (R .prop ('page'), window .page_exists)))
 			.forEach (tap (function (nav_intent) {
-				extension .intent (['nav', nav_intent, extension .state ()]);
+				naver .intent ([nav_intent, naver .state ()]);
 			}));
 		window .addEventListener ('hashchange', function () {
 			manual_nav (window .location .hash)
@@ -184,17 +177,17 @@
 			window .location .hash = window .routes .default;
 		}
 		
-		[extension .state]
+		[naver .state]
 			.map (filter (R .identity))
 			.map (dropRepeats)
 			.forEach (tap (function (page) {
 				if (! loaded_pages () [page .hash] && ! page .temp)
 					loaded_pages (
-						R .assoc (page .hash, intent_from_state (page)) (loaded_pages ()))
+						R .assoc (page .hash, /* you sure this is intent? */intent_from_state (page)) (loaded_pages ()))
 			}));
 			
 		return {
-			_: extension,
+			curr: naver,
 			loaded_pages: loaded_pages
 		};		
 	};
